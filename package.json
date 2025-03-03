@@ -4,14 +4,17 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host",
+    "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "node server/index.js",
-    "start": "npm run build && npm run server"
+    "start": "npm run build && npm run server",
+    "dev:server": "node server/index.js",
+    "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\""
   },
   "dependencies": {
+    "concurrently": "^8.2.2",
     "express": "^4.18.2",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",

@@ -1,31 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { useChat } from '../context/ChatContext';
-import { User, UserPlus } from 'lucide-react';
+import React, { useState } from "react";
+import { useChat } from "../context/ChatContext";
+import { User, UserPlus } from "lucide-react";
 
 const UserProfile: React.FC = () => {
   const { connected, joinChat } = useChat();
-  const [username, setUsername] = useState('');
-  const [avatar, setAvatar] = useState('');
-  const [error, setError] = useState('');
-  const [serverInfo, setServerInfo] = useState('');
-
-  useEffect(() => {
-    // Display the server URL for connecting from other devices
-    const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
-    const port = import.meta.env.DEV ? '3000' : window.location.port;
-    const serverUrl = `${protocol}//${hostname}${port ? `:${port}` : ''}`;
-    setServerInfo(serverUrl);
-  }, []);
+  const [username, setUsername] = useState("");
+  const [avatar, setAvatar] = useState("");
+  const [error, setError] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!username.trim()) {
-      setError('Username is required');
+      setError("Username is required");
       return;
     }
-    
+
     joinChat(username, avatar);
   };
 
@@ -35,10 +25,13 @@ const UserProfile: React.FC = () => {
         <User className="h-12 w-12 text-blue-500" />
         <h1 className="text-2xl font-bold ml-2">Join Chat</h1>
       </div>
-      
+
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="username"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Username
           </label>
           <input
@@ -52,9 +45,12 @@ const UserProfile: React.FC = () => {
           />
           {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
         </div>
-        
+
         <div className="mb-6">
-          <label htmlFor="avatar" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="avatar"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Avatar URL (optional)
           </label>
           <input
@@ -69,33 +65,41 @@ const UserProfile: React.FC = () => {
             Leave empty for a random avatar
           </p>
         </div>
-        
+
         <button
           type="submit"
           className={`w-full flex items-center justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-            connected ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'
+            connected
+              ? "bg-blue-600 hover:bg-blue-700"
+              : "bg-gray-400 cursor-not-allowed"
           }`}
           disabled={!connected}
         >
           <UserPlus className="h-5 w-5 mr-2" />
           Join Chat
         </button>
-        
+
         {!connected && (
           <p className="text-red-500 text-sm mt-2 text-center">
             Connecting to server...
           </p>
         )}
-        
-        {serverInfo && (
-          <div className="mt-6 p-3 bg-gray-50 rounded-md border border-gray-200">
-            <p className="text-sm text-gray-700 font-medium">To connect from another device:</p>
-            <p className="text-sm text-blue-600 mt-1 break-all">{serverInfo}</p>
-            <p className="text-xs text-gray-500 mt-2">
-              Make sure both devices are on the same network
-            </p>
-          </div>
-        )}
+
+        <div className="mt-6 p-3 bg-gray-50 rounded-md border border-gray-200">
+          <p className="text-sm text-gray-700 font-medium">
+            Connection Status:
+          </p>
+          <p
+            className={`text-sm mt-1 ${
+              connected ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            {connected ? "Connected to server" : "Attempting to connect..."}
+          </p>
+          <p className="text-xs text-gray-500 mt-2">
+            This chat works best when all users are on the same network
+          </p>
+        </div>
       </form>
     </div>
   );

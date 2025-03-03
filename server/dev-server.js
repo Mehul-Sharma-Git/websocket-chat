@@ -1,14 +1,11 @@
-import express from "express";
+import { spawn } from "child_process";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import express from "express";
 import { v4 as uuidv4 } from "uuid";
 import os from "os";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
+// Create Express app and HTTP server
 const app = express();
 const httpServer = createServer(app);
 
@@ -19,16 +16,13 @@ const io = new Server(httpServer, {
     methods: ["GET", "POST"],
     credentials: false,
   },
-  // Improved Socket.IO configuration
   pingTimeout: 60000,
   pingInterval: 25000,
-  transports: ["polling", "websocket"], // Start with polling, upgrade to websocket
+  transports: ["polling", "websocket"],
   allowUpgrades: true,
   cookie: false,
+  path: "/socket.io/",
 });
-
-// Serve static files from the dist directory
-app.use(express.static(join(__dirname, "../dist")));
 
 // Add CORS headers for all routes
 app.use((req, res, next) => {
@@ -41,15 +35,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// Handle all routes by serving index.html (for SPA)
-app.get("*", (req, res) => {
-  res.sendFile(join(__dirname, "../dist/index.html"));
-});
-
 // Store connected users and chat history
 const users = new Map();
 const chatHistory = [];
-const MAX_HISTORY = 50; // Limit chat history to prevent memory issues
+const MAX_HISTORY = 50;
 
 // Get local IP addresses
 const getLocalIPs = () => {
@@ -61,7 +50,6 @@ const getLocalIPs = () => {
     if (!interfaceInfo) continue;
 
     for (const info of interfaceInfo) {
-      // Skip internal and non-IPv4 addresses
       if (info.family === "IPv4" && !info.internal) {
         addresses.push(info.address);
       }
@@ -172,22 +160,35 @@ io.on("connection", (socket) => {
   });
 });
 
-// Start the server
-const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`WebSocket server is ready for connections`);
+// Start the WebSocket server
+const WS_PORT = 3000;
+httpServer.listen(WS_PORT, "0.0.0.0", () => {
+  console.log(`WebSocket server running on http://localhost:${WS_PORT}`);
 
   // Display all local IP addresses for connecting from other devices
   const localIPs = getLocalIPs();
   if (localIPs.length > 0) {
     console.log("\nConnect from other devices using one of these URLs:");
     localIPs.forEach((ip) => {
-      console.log(`http://${ip}:${PORT}`);
+      console.log(`http://${ip}:${WS_PORT}`);
     });
-  } else {
-    console.log(
-      "\nNo network interfaces found for connecting from other devices"
-    );
   }
+
+  // Start the Vite dev server
+  console.log("\nStarting Vite development server...");
+  const viteProcess = spawn("npm", ["run", "dev"], {
+    stdio: "inherit",
+    shell: true,
+  });
+
+  viteProcess.on("error", (error) => {
+    console.error("Failed to start Vite server:", error);
+  });
+
+  // Handle process termination
+  process.on("SIGINT", () => {
+    console.log("Shutting down servers...");
+    viteProcess.kill();
+    process.exit(0);
+  });
 });

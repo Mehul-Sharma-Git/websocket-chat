@@ -8,12 +8,15 @@ export default defineConfig({
     exclude: ["lucide-react"],
   },
   server: {
-    host: "0.0.0.0", // Allow connections from all network interfaces
+    host: true, // Listen on all addresses
+    port: 5173,
+    strictPort: true,
     proxy: {
       "/socket.io": {
-        target: "http://localhost:3000",
+        target: "ws://localhost:3000",
         ws: true,
         changeOrigin: true,
+        secure: false,
       },
     },
   },

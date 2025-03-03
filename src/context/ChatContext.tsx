@@ -10,16 +10,9 @@ import { User, Message, TypingIndicator, ChatState } from "../types";
 
 // Determine the WebSocket server URL
 const getServerUrl = () => {
-  // Always use HTTP/HTTPS for the initial connection
-  // Socket.io will upgrade to WebSocket when possible
-  const protocol = window.location.protocol;
-  const hostname = window.location.hostname;
-
-  // In development, always connect to port 3000
-  // In production, use the same port as the current page
-  const port = import.meta.env.DEV ? "3000" : window.location.port;
-
-  return `${protocol}//${hostname}${port ? `:${port}` : ""}`;
+  // In development, connect to the WebSocket server through the Vite proxy
+  // The proxy will forward requests to the WebSocket server running on port 3000
+  return "";
 };
 
 // Action types
@@ -124,14 +117,14 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   // Initialize socket connection
   useEffect(() => {
     const serverUrl = getServerUrl();
-    console.log("Connecting to server at:", serverUrl);
+    console.log("Connecting to WebSocket server...");
 
     // Configure socket with more robust options
     const socketInstance = io(serverUrl, {
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       timeout: 20000,
-      transports: ["websocket", "polling"], // Try WebSocket first, fall back to polling
+      autoConnect: true,
       forceNew: true,
     });
 
