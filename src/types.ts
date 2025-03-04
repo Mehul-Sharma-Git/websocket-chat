@@ -15,7 +15,7 @@ export interface Message {
     username: string;
     avatar?: string;
   };
-  type?: 'user' | 'system';
+  type?: "user" | "system";
 }
 
 export interface TypingIndicator {
@@ -30,4 +30,32 @@ export interface ChatState {
   users: User[];
   messages: Message[];
   typingUsers: TypingIndicator[];
+}
+
+export type GameType = "tictactoe";
+
+export interface GameInvite {
+  id: string;
+  gameType: GameType;
+  from: User;
+  to: User;
+  timestamp: Date;
+  status: "pending" | "accepted" | "rejected" | "expired";
+}
+
+export interface TicTacToeState {
+  board: Array<string | null>;
+  currentPlayer: string;
+  winner: string | null;
+  isDraw: boolean;
+  playerX: User | null;
+  playerO: User | null;
+  gameId: string | null;
+  status: "waiting" | "playing" | "finished";
+}
+
+export interface AppState {
+  activeFeature: "chat" | "tictactoe" | "home";
+  gameInvites: GameInvite[];
+  ticTacToe: TicTacToeState;
 }

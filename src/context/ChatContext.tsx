@@ -6,13 +6,24 @@ import React, {
   ReactNode,
 } from "react";
 import { io, Socket } from "socket.io-client";
-import { User, Message, TypingIndicator, ChatState } from "../types";
+import {
+  User,
+  Message,
+  TypingIndicator,
+  ChatState,
+  GameInvite,
+  GameType,
+} from "../types";
+import { v4 as uuidv4 } from "uuid";
+import { useApp } from "./AppContext";
 
-// Determine the WebSocket server URL
-const getServerUrl = () => {
-  // In development, connect to the WebSocket server through the Vite proxy
-  // The proxy will forward requests to the WebSocket server running on port 3000
-  return "";
+// Initial state
+const initialState: ChatState = {
+  connected: false,
+  user: null,
+  users: [],
+  messages: [],
+  typingUsers: [],
 };
 
 // Action types
@@ -26,15 +37,6 @@ type ChatAction =
   | { type: "ADD_MESSAGE"; payload: Message }
   | { type: "SET_TYPING"; payload: TypingIndicator }
   | { type: "CLEAR_TYPING"; payload: string };
-
-// Initial state
-const initialState: ChatState = {
-  connected: false,
-  user: null,
-  users: [],
-  messages: [],
-  typingUsers: [],
-};
 
 // Reducer function
 const chatReducer = (state: ChatState, action: ChatAction): ChatState => {
@@ -95,6 +97,9 @@ interface ChatContextType extends ChatState {
   joinChat: (username: string, avatar?: string) => void;
   sendMessage: (text: string) => void;
   setTyping: (isTyping: boolean) => void;
+  inviteToGame: (userId: string, gameType: GameType) => void;
+  respondToGameInvite: (inviteId: string, accept: boolean) => void;
+  makeMove: (index: number) => void;
 }
 
 const ChatContext = createContext<ChatContextType>({
@@ -103,6 +108,9 @@ const ChatContext = createContext<ChatContextType>({
   joinChat: () => {},
   sendMessage: () => {},
   setTyping: () => {},
+  inviteToGame: () => {},
+  respondToGameInvite: () => {},
+  makeMove: () => {},
 });
 
 // Provider component
@@ -113,14 +121,25 @@ interface ChatProviderProps {
 export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(chatReducer, initialState);
   const [socket, setSocket] = React.useState<Socket | null>(null);
+  const {
+    addGameInvite,
+    updateGameInvite,
+    setTicTacToeBoard,
+    setTicTacToeCurrentPlayer,
+    setTicTacToeWinner,
+    setTicTacToeDraw,
+    setTicTacToePlayers,
+    setTicTacToeGameId,
+    setTicTacToeStatus,
+    setActiveFeature,
+  } = useApp();
 
   // Initialize socket connection
   useEffect(() => {
-    const serverUrl = getServerUrl();
     console.log("Connecting to WebSocket server...");
 
     // Configure socket with more robust options
-    const socketInstance = io(serverUrl, {
+    const socketInstance = io("", {
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       timeout: 20000,
@@ -150,7 +169,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     };
   }, []);
 
-  // Set up event listeners
+  // Set up event listeners for WebSocket mode
   useEffect(() => {
     if (!socket) return;
 
@@ -190,14 +209,76 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       }
     });
 
+    // Handle game invites
+    socket.on("game-invite", (invite: GameInvite) => {
+      addGameInvite(invite);
+    });
+
+    // Handle game invite responses
+    socket.on(
+      "game-invite-response",
+      (data: { inviteId: string; accepted: boolean }) => {
+        updateGameInvite(
+          data.inviteId,
+          data.accepted ? "accepted" : "rejected"
+        );
+
+        if (data.accepted) {
+          setActiveFeature("tictactoe");
+        }
+      }
+    );
+
+    // Handle tic-tac-toe game updates
+    socket.on(
+      "tictactoe-update",
+      (data: {
+        board: Array<string | null>;
+        currentPlayer: string;
+        winner: string | null;
+        isDraw: boolean;
+        playerX: User | null;
+        playerO: User | null;
+        gameId: string;
+        status: "waiting" | "playing" | "finished";
+      }) => {
+        setTicTacToeBoard(data.board);
+        setTicTacToeCurrentPlayer(data.currentPlayer);
+        setTicTacToeWinner(data.winner);
+        setTicTacToeDraw(data.isDraw);
+        setTicTacToePlayers(data.playerX, data.playerO);
+        setTicTacToeGameId(data.gameId);
+        setTicTacToeStatus(data.status);
+
+        if (data.status === "playing") {
+          setActiveFeature("tictactoe");
+        }
+      }
+    );
+
     return () => {
       socket.off("initialize");
       socket.off("user-joined");
       socket.off("user-left");
       socket.off("message");
       socket.off("user-typing");
+      socket.off("game-invite");
+      socket.off("game-invite-response");
+      socket.off("tictactoe-update");
     };
-  }, [socket]);
+  }, [
+    socket,
+    addGameInvite,
+    updateGameInvite,
+    setTicTacToeBoard,
+    setTicTacToeCurrentPlayer,
+    setTicTacToeWinner,
+    setTicTacToeDraw,
+    setTicTacToePlayers,
+    setTicTacToeGameId,
+    setTicTacToeStatus,
+    setActiveFeature,
+  ]);
 
   // Join chat function
   const joinChat = (username: string, avatar?: string) => {
@@ -220,6 +301,27 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     }
   };
 
+  // Invite to game
+  const inviteToGame = (userId: string, gameType: GameType) => {
+    if (socket && socket.connected && state.user) {
+      socket.emit("invite-to-game", { userId, gameType });
+    }
+  };
+
+  // Respond to game invite
+  const respondToGameInvite = (inviteId: string, accept: boolean) => {
+    if (socket && socket.connected && state.user) {
+      socket.emit("respond-to-game-invite", { inviteId, accept });
+    }
+  };
+
+  // Make move in tic-tac-toe
+  const makeMove = (index: number) => {
+    if (socket && socket.connected && state.user) {
+      socket.emit("tictactoe-move", { index });
+    }
+  };
+
   return (
     <ChatContext.Provider
       value={{
@@ -228,6 +330,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         joinChat,
         sendMessage,
         setTyping,
+        inviteToGame,
+        respondToGameInvite,
+        makeMove,
       }}
     >
       {children}

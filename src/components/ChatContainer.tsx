@@ -1,8 +1,8 @@
-import React, { useRef, useEffect } from 'react';
-import { useChat } from '../context/ChatContext';
-import ChatMessage from './ChatMessage';
-import ChatInput from './ChatInput';
-import { MessageSquare } from 'lucide-react';
+import React, { useRef, useEffect } from "react";
+import { useChat } from "../context/ChatContext";
+import ChatMessage from "./ChatMessage";
+import ChatInput from "./ChatInput";
+import { MessageSquare } from "lucide-react";
 
 const ChatContainer: React.FC = () => {
   const { messages, typingUsers } = useChat();
@@ -10,7 +10,7 @@ const ChatContainer: React.FC = () => {
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   return (
@@ -19,9 +19,12 @@ const ChatContainer: React.FC = () => {
         <div className="flex items-center">
           <MessageSquare className="h-6 w-6 text-blue-500 mr-2" />
           <h1 className="text-xl font-bold">WebSocket Chat</h1>
+          <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+            Demo Mode
+          </span>
         </div>
       </div>
-      
+
       <div className="flex-grow overflow-y-auto p-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
@@ -30,10 +33,10 @@ const ChatContainer: React.FC = () => {
           </div>
         ) : (
           <>
-            {messages.map(message => (
+            {messages.map((message) => (
               <ChatMessage key={message.id} message={message} />
             ))}
-            
+
             {typingUsers.length > 0 && (
               <div className="text-gray-500 text-sm ml-4 mb-2">
                 {typingUsers.length === 1
@@ -41,12 +44,12 @@ const ChatContainer: React.FC = () => {
                   : `${typingUsers.length} people are typing...`}
               </div>
             )}
-            
+
             <div ref={messagesEndRef} />
           </>
         )}
       </div>
-      
+
       <ChatInput />
     </div>
   );

@@ -51,6 +51,10 @@ const users = new Map();
 const chatHistory = [];
 const MAX_HISTORY = 50; // Limit chat history to prevent memory issues
 
+// Game state
+const gameInvites = new Map();
+const ticTacToeGames = new Map();
+
 // Get local IP addresses
 const getLocalIPs = () => {
   const interfaces = os.networkInterfaces();
@@ -69,6 +73,34 @@ const getLocalIPs = () => {
   }
 
   return addresses;
+};
+
+// Check for tic-tac-toe win
+const checkWin = (board) => {
+  const winPatterns = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8], // rows
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8], // columns
+    [0, 4, 8],
+    [2, 4, 6], // diagonals
+  ];
+
+  for (const pattern of winPatterns) {
+    const [a, b, c] = pattern;
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+      return board[a];
+    }
+  }
+
+  return null;
+};
+
+// Check for tic-tac-toe draw
+const checkDraw = (board) => {
+  return board.every((cell) => cell !== null);
 };
 
 // Handle socket connections
@@ -147,47 +179,99 @@ io.on("connection", (socket) => {
     });
   });
 
-  // Handle user disconnection
-  socket.on("disconnect", () => {
+  // Handle game invites
+  socket.on("invite-to-game", ({ userId, gameType }) => {
+    const fromUser = users.get(socket.id);
+    if (!fromUser) return;
+
+    // Find the target user
+    let toUser = null;
+    for (const [_, user] of users.entries()) {
+      if (user.id === userId) {
+        toUser = user;
+        break;
+      }
+    }
+
+    if (!toUser) return;
+
+    // Create game invite
+    const inviteId = uuidv4();
+    const invite = {
+      id: inviteId,
+      gameType,
+      from: fromUser,
+      to: toUser,
+      timestamp: new Date(),
+      status: "pending",
+    };
+
+    gameInvites.set(inviteId, invite);
+
+    // Send invite to target user
+    io.to(toUser.socketId).emit("game-invite", invite);
+
+    // Set timeout to expire invite after 60 seconds
+    setTimeout(() => {
+      const storedInvite = gameInvites.get(inviteId);
+      if (storedInvite && storedInvite.status === "pending") {
+        storedInvite.status = "expired";
+        gameInvites.set(inviteId, storedInvite);
+      }
+    }, 60000);
+  });
+
+  // Handle game invite responses
+  socket.on("respond-to-game-invite", ({ inviteId, accept }) => {
     const user = users.get(socket.id);
     if (!user) return;
 
-    users.delete(socket.id);
+    const invite = gameInvites.get(inviteId);
+    if (!invite || invite.status !== "pending" || invite.to.id !== user.id)
+      return;
 
-    const disconnectMessage = {
-      id: uuidv4(),
-      type: "system",
-      text: `${user.username} has left the chat`,
-      timestamp: new Date(),
-      user: { id: "system", username: "System" },
-    };
+    // Update invite status
+    invite.status = accept ? "accepted" : "rejected";
+    gameInvites.set(inviteId, invite);
 
-    chatHistory.push(disconnectMessage);
-    if (chatHistory.length > MAX_HISTORY) chatHistory.shift();
-
-    // Notify other users
-    io.emit("user-left", { userId: user.id, message: disconnectMessage });
-
-    console.log("Client disconnected:", socket.id);
-  });
-});
-
-// Start the server
-const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`WebSocket server is ready for connections`);
-
-  // Display all local IP addresses for connecting from other devices
-  const localIPs = getLocalIPs();
-  if (localIPs.length > 0) {
-    console.log("\nConnect from other devices using one of these URLs:");
-    localIPs.forEach((ip) => {
-      console.log(`http://${ip}:${PORT}`);
+    // Notify the inviter
+    io.to(invite.from.socketId).emit("game-invite-response", {
+      inviteId,
+      accepted: accept,
     });
-  } else {
-    console.log(
-      "\nNo network interfaces found for connecting from other devices"
-    );
-  }
+
+    // If accepted, create a new game
+    if (accept && invite.gameType === "tictactoe") {
+      const gameId = uuidv4();
+      const game = {
+        id: gameId,
+        board: Array(9).fill(null),
+        currentPlayer: "X",
+        winner: null,
+        isDraw: false,
+        playerX: invite.from,
+        playerO: invite.to,
+        status: "playing",
+      };
+
+      ticTacToeGames.set(gameId, game);
+
+      // Send game state to both players
+      io.to(invite.from.socketId).emit("tictactoe-update", {
+        ...game,
+        gameId,
+      });
+
+      io.to(invite.to.socketId).emit("tictactoe-update", {
+        ...game,
+        gameId,
+      });
+    }
+  });
+
+  // Handle tic-tac-toe moves
+  socket.on("tictactoe-move", ({ index }) => {
+    const user = users.get(socket.id);
+    if (!user) return;
+  });
 });

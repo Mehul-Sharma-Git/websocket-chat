@@ -68,36 +68,17 @@ const UserProfile: React.FC = () => {
 
         <button
           type="submit"
-          className={`w-full flex items-center justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-            connected
-              ? "bg-blue-600 hover:bg-blue-700"
-              : "bg-gray-400 cursor-not-allowed"
-          }`}
-          disabled={!connected}
+          className="w-full flex items-center justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
         >
           <UserPlus className="h-5 w-5 mr-2" />
           Join Chat
         </button>
 
-        {!connected && (
-          <p className="text-red-500 text-sm mt-2 text-center">
-            Connecting to server...
-          </p>
-        )}
-
         <div className="mt-6 p-3 bg-gray-50 rounded-md border border-gray-200">
-          <p className="text-sm text-gray-700 font-medium">
-            Connection Status:
-          </p>
-          <p
-            className={`text-sm mt-1 ${
-              connected ? "text-green-600" : "text-red-600"
-            }`}
-          >
-            {connected ? "Connected to server" : "Attempting to connect..."}
-          </p>
+          <p className="text-sm text-gray-700 font-medium">Demo Mode Active</p>
           <p className="text-xs text-gray-500 mt-2">
-            This chat works best when all users are on the same network
+            This is a standalone demo of the chat application. Enter a username
+            to start chatting!
           </p>
         </div>
       </form>
