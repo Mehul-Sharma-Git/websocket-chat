@@ -17,8 +17,8 @@ export default defineConfig({
         ws: true,
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path,
       },
     },
   },
 });
+// Compare this snippet from src/context/AppContext.tsx:

@@ -19,12 +19,12 @@ const io = new Server(httpServer, {
     methods: ["GET", "POST"],
     credentials: false,
   },
-  // Improved Socket.IO configuration
   pingTimeout: 60000,
   pingInterval: 25000,
-  transports: ["polling", "websocket"], // Start with polling, upgrade to websocket
+  transports: ["websocket", "polling"],
   allowUpgrades: true,
   cookie: false,
+  path: "/socket.io/",
 });
 
 // Serve static files from the dist directory
@@ -49,7 +49,7 @@ app.get("*", (req, res) => {
 // Store connected users and chat history
 const users = new Map();
 const chatHistory = [];
-const MAX_HISTORY = 50; // Limit chat history to prevent memory issues
+const MAX_HISTORY = 50;
 
 // Game state
 const gameInvites = new Map();
@@ -65,7 +65,6 @@ const getLocalIPs = () => {
     if (!interfaceInfo) continue;
 
     for (const info of interfaceInfo) {
-      // Skip internal and non-IPv4 addresses
       if (info.family === "IPv4" && !info.internal) {
         addresses.push(info.address);
       }
@@ -217,6 +216,7 @@ io.on("connection", (socket) => {
       if (storedInvite && storedInvite.status === "pending") {
         storedInvite.status = "expired";
         gameInvites.set(inviteId, storedInvite);
+        io.to(toUser.socketId).emit("game-invite-expired", { inviteId });
       }
     }, 60000);
   });
@@ -270,8 +270,84 @@ io.on("connection", (socket) => {
   });
 
   // Handle tic-tac-toe moves
-  socket.on("tictactoe-move", ({ index }) => {
+  socket.on("tictactoe-move", ({ gameId, index }) => {
     const user = users.get(socket.id);
     if (!user) return;
+
+    const game = ticTacToeGames.get(gameId);
+    if (!game || game.status !== "playing") return;
+
+    // Verify it's the player's turn
+    const isPlayerX = game.playerX.id === user.id;
+    const isPlayerO = game.playerO.id === user.id;
+    if (
+      (!isPlayerX && !isPlayerO) ||
+      (isPlayerX && game.currentPlayer !== "X") ||
+      (isPlayerO && game.currentPlayer !== "O")
+    ) {
+      return;
+    }
+
+    // Make the move
+    if (game.board[index] === null) {
+      game.board[index] = game.currentPlayer;
+
+      // Check for win or draw
+      const winner = checkWin(game.board);
+      const isDraw = !winner && checkDraw(game.board);
+
+      if (winner || isDraw) {
+        game.status = "finished";
+        game.winner = winner;
+        game.isDraw = isDraw;
+      } else {
+        game.currentPlayer = game.currentPlayer === "X" ? "O" : "X";
+      }
+
+      ticTacToeGames.set(gameId, game);
+
+      // Broadcast updated game state
+      io.to(game.playerX.socketId).emit("tictactoe-update", game);
+      io.to(game.playerO.socketId).emit("tictactoe-update", game);
+    }
   });
+
+  // Handle user disconnection
+  socket.on("disconnect", () => {
+    const user = users.get(socket.id);
+    if (!user) return;
+
+    users.delete(socket.id);
+
+    const disconnectMessage = {
+      id: uuidv4(),
+      type: "system",
+      text: `${user.username} has left the chat`,
+      timestamp: new Date(),
+      user: { id: "system", username: "System" },
+    };
+
+    chatHistory.push(disconnectMessage);
+    if (chatHistory.length > MAX_HISTORY) chatHistory.shift();
+
+    // Notify other users
+    io.emit("user-left", { userId: user.id, message: disconnectMessage });
+
+    console.log("Client disconnected:", socket.id);
+  });
+});
+
+// Start the server
+const PORT = process.env.PORT || 3000;
+httpServer.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
+
+  // Display all local IP addresses for connecting from other devices
+  const localIPs = getLocalIPs();
+  if (localIPs.length > 0) {
+    console.log("\nConnect from other devices using one of these URLs:");
+    localIPs.forEach((ip) => {
+      console.log(`http://${ip}:${PORT}`);
+    });
+  }
 });

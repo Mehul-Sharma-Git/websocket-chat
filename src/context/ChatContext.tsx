@@ -14,7 +14,6 @@ import {
   GameInvite,
   GameType,
 } from "../types";
-import { v4 as uuidv4 } from "uuid";
 import { useApp } from "./AppContext";
 
 // Initial state
@@ -136,14 +135,15 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   useEffect(() => {
     console.log("Connecting to WebSocket server...");
 
-    // Configure socket with more robust options
-    const socketInstance = io("/", {
-      reconnectionAttempts: 10,
+    const socketInstance = io({
+      path: "/socket.io/",
+      transports: ["websocket", "polling"],
+      reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       timeout: 20000,
       autoConnect: true,
       forceNew: true,
-      transports: ["websocket", "polling"],
+      withCredentials: false,
     });
 
     setSocket(socketInstance);
@@ -161,6 +161,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     socketInstance.on("connect_error", (error) => {
       console.error("Connection error:", error);
       dispatch({ type: "CONNECT", payload: false });
+
+      // Attempt to reconnect after a delay
+      setTimeout(() => {
+        socketInstance.connect();
+      }, 2000);
     });
 
     return () => {
@@ -168,11 +173,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     };
   }, []);
 
-  // Set up event listeners for WebSocket mode
+  // Set up event listeners
   useEffect(() => {
     if (!socket) return;
 
-    // Handle initialization data
     socket.on(
       "initialize",
       (data: { user: User; users: User[]; chatHistory: Message[] }) => {
@@ -182,24 +186,20 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       }
     );
 
-    // Handle new user joining
     socket.on("user-joined", (data: { user: User; message: Message }) => {
       dispatch({ type: "ADD_USER", payload: data.user });
       dispatch({ type: "ADD_MESSAGE", payload: data.message });
     });
 
-    // Handle user leaving
     socket.on("user-left", (data: { userId: string; message: Message }) => {
       dispatch({ type: "REMOVE_USER", payload: data.userId });
       dispatch({ type: "ADD_MESSAGE", payload: data.message });
     });
 
-    // Handle incoming messages
     socket.on("message", (message: Message) => {
       dispatch({ type: "ADD_MESSAGE", payload: message });
     });
 
-    // Handle typing indicators
     socket.on("user-typing", (data: TypingIndicator) => {
       if (data.isTyping) {
         dispatch({ type: "SET_TYPING", payload: data });
@@ -208,12 +208,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       }
     });
 
-    // Handle game invites
     socket.on("game-invite", (invite: GameInvite) => {
       addGameInvite(invite);
     });
 
-    // Handle game invite responses
     socket.on(
       "game-invite-response",
       (data: { inviteId: string; accepted: boolean }) => {
@@ -228,7 +226,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       }
     );
 
-    // Handle tic-tac-toe game updates
     socket.on(
       "tictactoe-update",
       (data: {
@@ -279,42 +276,36 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     setActiveFeature,
   ]);
 
-  // Join chat function
   const joinChat = (username: string, avatar?: string) => {
     if (socket && socket.connected) {
       socket.emit("join", { username, avatar });
     }
   };
 
-  // Send message function
   const sendMessage = (text: string) => {
     if (socket && socket.connected && state.user) {
       socket.emit("message", { text });
     }
   };
 
-  // Set typing indicator
   const setTyping = (isTyping: boolean) => {
     if (socket && socket.connected && state.user) {
       socket.emit("typing", isTyping);
     }
   };
 
-  // Invite to game
   const inviteToGame = (userId: string, gameType: GameType) => {
     if (socket && socket.connected && state.user) {
       socket.emit("invite-to-game", { userId, gameType });
     }
   };
 
-  // Respond to game invite
   const respondToGameInvite = (inviteId: string, accept: boolean) => {
     if (socket && socket.connected && state.user) {
       socket.emit("respond-to-game-invite", { inviteId, accept });
     }
   };
 
-  // Make move in tic-tac-toe
   const makeMove = (index: number) => {
     if (socket && socket.connected && state.user) {
       socket.emit("tictactoe-move", { index });
@@ -339,5 +330,4 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   );
 };
 
-// Custom hook
 export const useChat = () => useContext(ChatContext);
