@@ -67,12 +67,10 @@ const chatReducer = (state: ChatState, action: ChatAction): ChatState => {
       );
 
       if (existingIndex >= 0) {
-        // Update existing typing indicator
         const updatedTypingUsers = [...state.typingUsers];
         updatedTypingUsers[existingIndex] = action.payload;
         return { ...state, typingUsers: updatedTypingUsers };
       } else if (action.payload.isTyping) {
-        // Add new typing indicator
         return {
           ...state,
           typingUsers: [...state.typingUsers, action.payload],
@@ -139,12 +137,13 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     console.log("Connecting to WebSocket server...");
 
     // Configure socket with more robust options
-    const socketInstance = io("", {
+    const socketInstance = io("/", {
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       timeout: 20000,
       autoConnect: true,
       forceNew: true,
+      transports: ["websocket", "polling"],
     });
 
     setSocket(socketInstance);

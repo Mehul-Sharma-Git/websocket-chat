@@ -8,7 +8,7 @@ export default defineConfig({
     exclude: ["lucide-react"],
   },
   server: {
-    host: true, // Listen on all addresses
+    host: true,
     port: 5173,
     strictPort: true,
     proxy: {
@@ -17,6 +17,7 @@ export default defineConfig({
         ws: true,
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path,
       },
     },
   },
