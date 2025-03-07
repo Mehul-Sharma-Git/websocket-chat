@@ -129,6 +129,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     setTicTacToeGameId,
     setTicTacToeStatus,
     setActiveFeature,
+    ticTacToe,
   } = useApp();
 
   // Initialize socket connection
@@ -307,8 +308,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   };
 
   const makeMove = (index: number) => {
-    if (socket && socket.connected && state.user) {
-      socket.emit("tictactoe-move", { index });
+    if (socket && socket.connected && state.user && ticTacToe.gameId) {
+      socket.emit("tictactoe-move", { gameId: ticTacToe.gameId, index });
     }
   };
 

@@ -7,8 +7,16 @@ const TicTacToe: React.FC = () => {
   const { user, makeMove } = useChat();
   const { ticTacToe, resetTicTacToe, setActiveFeature } = useApp();
 
-  const { board, currentPlayer, winner, isDraw, playerX, playerO, status } =
-    ticTacToe;
+  const {
+    board,
+    currentPlayer,
+    winner,
+    isDraw,
+    playerX,
+    playerO,
+    status,
+    gameId,
+  } = ticTacToe;
 
   const isMyTurn = () => {
     if (!user || status !== "playing") return false;
@@ -20,7 +28,7 @@ const TicTacToe: React.FC = () => {
   };
 
   const handleCellClick = (index: number) => {
-    if (board[index] || !isMyTurn() || winner || isDraw) return;
+    if (!gameId || board[index] || !isMyTurn() || winner || isDraw) return;
 
     makeMove(index);
   };

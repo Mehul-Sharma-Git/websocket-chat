@@ -4,12 +4,16 @@ import { useApp } from "../context/AppContext";
 import { MessageSquare, Grid, Users, GamepadIcon } from "lucide-react";
 
 const Home: React.FC = () => {
-  const { users, user } = useChat();
+  const { users, user, inviteToGame, respondToGameInvite } = useChat();
   const { setActiveFeature, gameInvites } = useApp();
 
   const pendingInvites = gameInvites.filter(
     (invite) => invite.status === "pending" && invite.to.id === user?.id
   );
+
+  const handleInviteToGame = (userId: string) => {
+    inviteToGame(userId, "tictactoe");
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -52,19 +56,13 @@ const Home: React.FC = () => {
                     <div className="flex space-x-2">
                       <button
                         className="px-3 py-1 bg-green-500 text-white text-sm rounded-md hover:bg-green-600"
-                        onClick={() => {
-                          const { respondToGameInvite } = useChat();
-                          respondToGameInvite(invite.id, true);
-                        }}
+                        onClick={() => respondToGameInvite(invite.id, true)}
                       >
                         Accept
                       </button>
                       <button
                         className="px-3 py-1 bg-red-500 text-white text-sm rounded-md hover:bg-red-600"
-                        onClick={() => {
-                          const { respondToGameInvite } = useChat();
-                          respondToGameInvite(invite.id, false);
-                        }}
+                        onClick={() => respondToGameInvite(invite.id, false)}
                       >
                         Decline
                       </button>
@@ -137,8 +135,7 @@ const Home: React.FC = () => {
                           className="mt-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full hover:bg-blue-200"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const { inviteToGame } = useChat();
-                            inviteToGame(onlineUser.id, "tictactoe");
+                            handleInviteToGame(onlineUser.id);
                           }}
                         >
                           Invite to game

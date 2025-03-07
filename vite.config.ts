@@ -1,7 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
@@ -13,7 +12,7 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       "/socket.io": {
-        target: "ws://localhost:3000",
+        target: "http://localhost:3000",
         ws: true,
         changeOrigin: true,
         secure: false,
@@ -21,4 +20,3 @@ export default defineConfig({
     },
   },
 });
-// Compare this snippet from src/context/AppContext.tsx:

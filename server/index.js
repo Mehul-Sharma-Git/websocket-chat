@@ -27,9 +27,6 @@ const io = new Server(httpServer, {
   path: "/socket.io/",
 });
 
-// Serve static files from the dist directory
-app.use(express.static(join(__dirname, "../dist")));
-
 // Add CORS headers for all routes
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
@@ -40,6 +37,9 @@ app.use((req, res, next) => {
   );
   next();
 });
+
+// Serve static files from the dist directory
+app.use(express.static(join(__dirname, "../dist")));
 
 // Handle all routes by serving index.html (for SPA)
 app.get("*", (req, res) => {
@@ -339,6 +339,8 @@ io.on("connection", (socket) => {
 
 // Start the server
 const PORT = process.env.PORT || 3000;
+
+// Listen on all network interfaces
 httpServer.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 
