@@ -28,14 +28,23 @@ const TicTacToe: React.FC = () => {
   };
 
   const handleCellClick = (index: number) => {
-    if (!gameId || board[index] || !isMyTurn() || winner || isDraw) return;
-
+    console.log("Cell clicked:", { index, gameId, isMyTurn: isMyTurn() }); // Debug log
+    if (!gameId || board[index] !== null || !isMyTurn() || winner || isDraw) {
+      console.log("Click rejected:", {
+        noGameId: !gameId,
+        cellOccupied: board[index] !== null,
+        notMyTurn: !isMyTurn(),
+        hasWinner: winner,
+        isDraw: isDraw,
+      }); // Debug log
+      return;
+    }
     makeMove(index);
   };
 
   const renderCell = (index: number) => {
     const value = board[index];
-    const isClickable = !value && isMyTurn() && !winner && !isDraw;
+    const isClickable = value === null && isMyTurn() && !winner && !isDraw;
 
     return (
       <div

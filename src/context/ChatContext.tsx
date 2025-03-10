@@ -136,7 +136,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   useEffect(() => {
     console.log("Connecting to WebSocket server...");
 
-    const socketInstance = io({
+    const socketInstance = io("/", {
       path: "/socket.io/",
       transports: ["websocket", "polling"],
       reconnectionAttempts: 5,
@@ -220,10 +220,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           data.inviteId,
           data.accepted ? "accepted" : "rejected"
         );
-
-        if (data.accepted) {
-          setActiveFeature("tictactoe");
-        }
       }
     );
 
@@ -239,6 +235,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         gameId: string;
         status: "waiting" | "playing" | "finished";
       }) => {
+        console.log("Received game update:", data); // Debug log
         setTicTacToeBoard(data.board);
         setTicTacToeCurrentPlayer(data.currentPlayer);
         setTicTacToeWinner(data.winner);
@@ -309,7 +306,14 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
   const makeMove = (index: number) => {
     if (socket && socket.connected && state.user && ticTacToe.gameId) {
+      console.log("Making move:", { gameId: ticTacToe.gameId, index }); // Debug log
       socket.emit("tictactoe-move", { gameId: ticTacToe.gameId, index });
+    } else {
+      console.warn("Cannot make move:", {
+        socketConnected: socket?.connected,
+        user: state.user,
+        gameId: ticTacToe.gameId,
+      }); // Debug log
     }
   };
 
